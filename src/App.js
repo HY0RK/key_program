@@ -62,7 +62,12 @@ function AddModal(props) {
     switch (name) {
       case "number":
         if (value !== null && value !== "") {
-          setNewKeyNumber(parseInt(value))
+          if (setNewKeyNumber(parseInt(value) !== NaN)) {
+            setNewKeyNumber(parseInt(value))
+          }
+          else {
+            setNewKeyNumber(value)
+          }
           setCheckDisabled(false)
         } else if (!checkDisabled){
           setNewKeyNumber(value)
