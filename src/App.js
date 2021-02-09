@@ -1,49 +1,86 @@
 import './App.css';
-import {Container, Row, Col, Button, Modal, InputGroup, FormControl, DropdownButton, Dropdown} from 'react-bootstrap'
-import { useState } from 'react';
+import {Container, Row, Col, Button, Modal, InputGroup, FormControl, DropdownButton, Dropdown, Spinner} from 'react-bootstrap'
+import { useState, useEffect } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
 
-function test() {
-  fetch("http://localhost:3001/keys", {
+
+
+async function getKeys() {
+  return fetch("http://localhost:3001/keys", {
     method: "GET",
     headers: {
       "Content-type": "application/x-www-form-urlencoded"
     }
   }).then((response) => {
-    console.log(response)
     if (response.ok) {
       return response.json();
     } else {
       console.log(response)
     }
+  }).then((response) => response)
+}
+
+async function issueDbUpdate(props) {
+  const toUpdate = {
+    _id: props._id,
+    newOwner: props.owner
+  }
+  return fetch("http://localhost:3001/issueKey", {
+    method: "POST",
+    body : "toUpdate=" + JSON.stringify(toUpdate),
+    headers: {
+      "Content-type": "application/x-www-form-urlencoded"
+    }
   }).then((response) => {
-    console.log(response)
+    if (response.ok) {
+      
+    } else {
+      console.log(response)
+    }
   })
 }
 
+async function returnDbUpdate(props) {
+  const  toUpdate = {
+    _id: props
+  }
+  return fetch("http://localhost:3001/returnKey", {
+    method: "POST",
+    body: "toUpdate=" + JSON.stringify(toUpdate),
+    headers: {
+      "Content-type": "application/x-www-form-urlencoded"
+    }
+  }).then((response) => {
+    if (response.ok) {
 
-function getKeys() {
-  return (
-    [
-      {
-        number: 1,
-        type: "B",
-        owner: "Frank",
-        issueDate: null,
-        returnDate: null
-      },{
-        number: 2,
-        type: "A",
-        owner: null,
-        issueDate: null,
-        returnDate: null,
-      }
-    ]
-    
-  )
+    } else {
+      console.log(response)
+    }
+  })
 }
 
+async function keyDbUpdate(props) {
+  const body = {
+    number: props.number,
+    type: props.type,
+    owner: props.owner,
+    issueDate: props.issueDate,
+    returnDate: props.returnDate,
+  }
+  fetch("http://localhost:3001/addKey", {
+    method: "POST",
+    body: "toAdd=" + JSON.stringify(body),
+    headers: {
+      "Content-type": "application/x-www-form-urlencoded"
+    }
+  }).then((response) => {
+    if (response.ok) {
 
+    } else {
+      console.log(response)
+    }
+  })
+}
 function AddModal(props) {
   const [checkDisabled, setCheckDisabled] = useState(false) 
   const [newKeyNumber, setNewKeyNumber] = useState(props.children.keyList.length + 1)
@@ -116,18 +153,12 @@ function AddModal(props) {
       </Modal.Header>
       <Modal.Body>
         <Row>
-          <Col>Key #</Col>
           <Col>Key Type</Col>
-          <Col>Loaned To</Col>
+          <Col>Key #</Col>
+          <Col>Issueed To</Col>
         </Row>
         <Row>
-          <Col>
-            <InputGroup>
-              <FormControl value={newKeyNumber} name="number" onChange={handleChange}  aria-label="With textarea" />
-            </InputGroup>
-          </Col>
-          
-            {!typeOther &&
+        {!typeOther &&
               <Col className="justify-content-md-center">
                 <DropdownButton title={newKeyType}>
                   <Dropdown.Item name="type" onClick={() => setNewKeyType("A")}>A</Dropdown.Item>
@@ -150,7 +181,12 @@ function AddModal(props) {
             }
           <Col>
             <InputGroup>
-              <FormControl placeholder="Leave blank if not loaned out" name="owner" onChange={handleChange} aria-label="Loaned to " onKeyPress={enterSubmit}/>
+              <FormControl value={newKeyNumber} name="number" onChange={handleChange}  aria-label="With textarea" />
+            </InputGroup>
+          </Col>
+          <Col>
+            <InputGroup>
+              <FormControl placeholder="Leave blank if not issueed out" name="owner" onChange={handleChange} aria-label="Issueed to " onKeyPress={enterSubmit}/>
             </InputGroup>
           </Col>
         </Row>
@@ -165,10 +201,10 @@ function AddModal(props) {
 
 
 
-function LoanModal(props) {
+function IssueModal(props) {
   const [newOwner, setNewOwner] = useState(null)
   const [checkDisabled, setCheckDisabled] = useState(true)
-  const loanModalIndex = props.children.loanModalIndex
+  const issueModalIndex = props.children.issueModalIndex
 
   function handleChange(e) {
     const { target : {value, name} } = e
@@ -184,15 +220,15 @@ function LoanModal(props) {
     setNewOwner(null);
     setCheckDisabled(true);
   }
-  function submitLoan() {
+  function submitIssue() {
     if (newOwner !== null && newOwner !== ""){
-      props.children.loanFunc({newOwner,loanModalIndex})
+      props.children.issueFunc({newOwner,issueModalIndex})
       resetModal()
     }
   }
   function enterSubmit(e) {
     if (e.charCode === 13) {
-      submitLoan()
+      submitIssue()
     }
   }
   return (
@@ -203,7 +239,7 @@ function LoanModal(props) {
     >
       <Modal.Header closeButton>
         <Modal.Title id="contained-modal-title-vcenter">
-          Loan Key
+          Issue Key
         </Modal.Title>
       </Modal.Header>
       <Modal.Body>
@@ -215,7 +251,7 @@ function LoanModal(props) {
       </Modal.Body>
       <Modal.Footer>
         <Button onClick={props.onHide}>Close</Button>
-        <Button disabled={checkDisabled} onClick={submitLoan}>Add</Button>
+        <Button disabled={checkDisabled} onClick={submitIssue}>Add</Button>
       </Modal.Footer>
     </Modal>
   )
@@ -224,12 +260,12 @@ function LoanModal(props) {
 function KeyFormat(key, index, functions) {
   function onClickHandler() {
     functions.keyIndex(index)
-    functions.loanModal(index)
+    functions.issueModal(index)
   }
   return (
     <Row key={index}>
-      <Col>{key.number}</Col>
       <Col>{key.type}</Col>
+      <Col>{key.number}</Col>
       <Col>{key.owner}</Col>
       <Col>{key.issueDate}</Col>
       <Col>{key.returnDate}</Col>
@@ -238,7 +274,7 @@ function KeyFormat(key, index, functions) {
           <Button onClick={() => functions.returnFunc(index)}>Return</Button>
         }
         {key.owner === null &&
-          <Button onClick={onClickHandler}>Loan Key</Button>
+          <Button onClick={onClickHandler}>Issue Key</Button>
         }
 
       </Col>
@@ -250,7 +286,7 @@ function ListKeys(props) {
   var keyOutput;
   let functions = {
     returnFunc: props.children.returnFunc,
-    loanModal: props.children.loanModal,
+    issueModal: props.children.issueModal,
     keyIndex: props.children.keyIndex,
   }
   keyOutput = props.keyList.map(((key, index) =>
@@ -262,30 +298,41 @@ function ListKeys(props) {
 }
 
 function App() {
-  const [keyList, setKeyList] = useState(getKeys)
+  const [keyList, setKeyList] = useState([])
+  // used to get the keyList from mongo
+  useEffect(async () => {
+    if (keyList.length === 0) {
+      const result = await getKeys();
+      setKeyList(result)
+    }
+  })
   const [addModalShow, setAddModalShow] = useState(false)
-  const [loanModalShow, setLoanModalShow] = useState(false)
-  const [loanModalIndex, setLoanModalIndex] = useState(null)
+  const [issueModalShow, setIssueModalShow] = useState(false)
+  const [issueModalIndex, setIssueModalIndex] = useState(null)
   var tempKeyList
   function addKey(props) {
     tempKeyList = keyList;
     tempKeyList.push(props)
     setKeyList(tempKeyList)
+    keyDbUpdate(props)
   }
   function returnKey(index) {
     // setKeyList({...keyList, index  : {keyOwner: null}})
     tempKeyList = [...keyList];
     tempKeyList[index].owner = null
     tempKeyList[index].returnDate = new Date().toDateString()
+    returnDbUpdate(tempKeyList[index]._id)
     setKeyList(tempKeyList)
   }
-  function loanKey(index) {
+  function issueKey(index) {
+    console.log(index)
     tempKeyList = [...keyList];
-
-    tempKeyList[index.loanModalIndex].owner = index.newOwner;
-    tempKeyList[index.loanModalIndex].issueDate = new Date().toDateString()
+    tempKeyList[index.issueModalIndex].owner = index.newOwner;
+    tempKeyList[index.issueModalIndex].issueDate = new Date().toDateString()
+    // let toUpdate = tempKeyList[index.issueModalIndex];
+    issueDbUpdate(tempKeyList[index.issueModalIndex])
     setKeyList(tempKeyList)
-    setLoanModalShow(false)
+    setIssueModalShow(false)
   }
   return (
     <Container fluid >
@@ -295,42 +342,49 @@ function App() {
         </Col>
       </Row>
       <Row>
-        <Col>Key #</Col>
+        {/* <Button variant="secondary" block size='sm'>Filter</Button> */}
+      </Row>
+      <Row>
         <Col>Key Type</Col>
-        <Col>Loaned To</Col>
+        <Col>Key #</Col>
+        <Col>Issued To</Col>
         <Col>Issue Date</Col>
         <Col>Return Date</Col>
         <Col></Col>
       </Row>
-      <ListKeys
-        keyList={keyList}
-        setKeyList={setKeyList}
-        children={{
-          returnFunc: index => returnKey(index),
-          loanModal: () => setLoanModalShow(true),
-          keyIndex: index => setLoanModalIndex(index),
-        }}
-      />
-      <Button onClick={test}>TEST</Button>
-      <AddModal
-        show={addModalShow}
-        onHide={() => setAddModalShow(false)}
-        children={
-          {
-            keyList: keyList,
-            newKey:newKey => addKey(newKey)
-         }
-        }
-      />
-      <LoanModal 
-        show={loanModalShow}
-        onHide={() => setLoanModalShow(false)}
-        children={{
-          keyList: keyList,
-          loanFunc: props => loanKey(props),
-          loanModalIndex: loanModalIndex
-        }}
-      />
+      {keyList.length > 0 &&
+        <>
+          <ListKeys
+            keyList={keyList}
+            setKeyList={setKeyList}
+            children={{
+              returnFunc: index => returnKey(index),
+              issueModal: () => setIssueModalShow(true),
+              keyIndex: index => setIssueModalIndex(index),
+            }}
+          />
+          <AddModal
+            show={addModalShow}
+            onHide={() => setAddModalShow(false)}
+            children={
+              {
+                keyList: keyList,
+                newKey:newKey => addKey(newKey)
+            }
+            }
+          />
+          <IssueModal 
+            show={issueModalShow}
+            onHide={() => setIssueModalShow(false)}
+            children={{
+              keyList: keyList,
+              issueFunc: props => issueKey(props),
+              issueModalIndex: issueModalIndex
+            }}
+          />
+        </>
+      }
+      
 
     </Container>  
   );
