@@ -3,10 +3,13 @@ import {Container, Row, Col, Button, Modal, InputGroup, FormControl, DropdownBut
 import { useState, useEffect } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
 
+const url = "http://192.168.2.5:3001/" 
+
 
 
 async function getKeys() {
-  return fetch("http://localhost:3001/keys", {
+  
+  return fetch(url + "keys", {
     method: "GET",
     headers: {
       "Content-type": "application/x-www-form-urlencoded"
@@ -25,7 +28,7 @@ async function issueDbUpdate(props) {
     _id: props._id,
     newOwner: props.owner
   }
-  return fetch("http://localhost:3001/issueKey", {
+  return fetch(url + "issueKey", {
     method: "POST",
     body : "toUpdate=" + JSON.stringify(toUpdate),
     headers: {
@@ -44,7 +47,7 @@ async function returnDbUpdate(props) {
   const  toUpdate = {
     _id: props
   }
-  return fetch("http://localhost:3001/returnKey", {
+  return fetch(url + "returnKey", {
     method: "POST",
     body: "toUpdate=" + JSON.stringify(toUpdate),
     headers: {
@@ -67,7 +70,7 @@ async function keyDbUpdate(props) {
     issueDate: props.issueDate,
     returnDate: props.returnDate,
   }
-  fetch("http://localhost:3001/addKey", {
+  fetch(url + "addKey", {
     method: "POST",
     body: "toAdd=" + JSON.stringify(body),
     headers: {
@@ -85,13 +88,13 @@ function AddModal(props) {
   const [checkDisabled, setCheckDisabled] = useState(false) 
   const [newKeyNumber, setNewKeyNumber] = useState(props.children.keyList.length + 1)
   const [newKeyType, setNewKeyType] = useState("A")
-  const [newKeyOwner, setNewKeyOwner] = useState(null)
+  const [newKeyOwner, setNewKeyOwner] = useState("")
   const [typeOther, setTypeOther] = useState(false)
   function resetModal() {
     setCheckDisabled(false)
     setNewKeyNumber(props.children.keyList.length + 1)
     setNewKeyType("A")
-    setNewKeyOwner(null)
+    setNewKeyOwner("")
     setTypeOther(false)
   }
   function handleChange(e) {
@@ -118,23 +121,21 @@ function AddModal(props) {
         setNewKeyType(value)
         break;
       default:
-        console.log(value)
-    }
+   }
     
   }
   function enterSubmit(e) {
-    console.log(e.charCode)
     if (e.charCode === 13) {
       prepKey()
     }
   }
   function prepKey() {
     let newKey = {
-      number: newKeyNumber,
       type: newKeyType,
+      number: newKeyNumber,
       owner: newKeyOwner,
-      issueDate: null,
-      returnDate: null
+      issueDate: "",
+      returnDate: ""
     }
     if (newKey.owner != null && newKey.owner != ""){
       newKey.issueDate = new Date().toDateString()
@@ -163,27 +164,27 @@ function AddModal(props) {
           <Col>Issueed To</Col>
         </Row>
         <Row>
-        {!typeOther &&
-              <Col className="justify-content-md-center">
-                <DropdownButton title={newKeyType}>
-                  <Dropdown.Item name="type" onClick={() => setNewKeyType("A")}>A</Dropdown.Item>
-                  <Dropdown.Item name="type" onClick={() => setNewKeyType("B")}>B</Dropdown.Item>
-                  <Dropdown.Item name="type" onClick={() => setNewKeyType("C")}>C</Dropdown.Item>
-                  <Dropdown.Item name="type" onClick={() => setNewKeyType("D")}>D</Dropdown.Item>
-                  <Dropdown.Item name="type" onClick={() => setNewKeyType("E")}>E</Dropdown.Item>
-                  <Dropdown.Item onClick={() => setTypeOther(true)}>Other</Dropdown.Item>
-                </DropdownButton>
-              </Col>
-            }
-            {typeOther &&
-              <Col>
-                <InputGroup>
-                  <FormControl value={newKeyType} name="typeOther" onChange={handleChange}/>
-                  <Button onClick={() => setTypeOther(false)}>Reset</Button>
-                </InputGroup>
-                
-              </Col>
-            }
+          {!typeOther &&
+            <Col className="justify-content-md-center">
+              <DropdownButton title={newKeyType}>
+                <Dropdown.Item name="type" onClick={() => setNewKeyType("A")}>A</Dropdown.Item>
+                <Dropdown.Item name="type" onClick={() => setNewKeyType("B")}>B</Dropdown.Item>
+                <Dropdown.Item name="type" onClick={() => setNewKeyType("C")}>C</Dropdown.Item>
+                <Dropdown.Item name="type" onClick={() => setNewKeyType("D")}>D</Dropdown.Item>
+                <Dropdown.Item name="type" onClick={() => setNewKeyType("E")}>E</Dropdown.Item>
+                <Dropdown.Item onClick={() => setTypeOther(true)}>Other</Dropdown.Item>
+              </DropdownButton>
+            </Col>
+          }
+          {typeOther &&
+            <Col>
+              <InputGroup>
+                <FormControl value={newKeyType} name="typeOther" onChange={handleChange}/>
+                <Button onClick={() => setTypeOther(false)}>Reset</Button>
+              </InputGroup>
+              
+            </Col>
+          }
           <Col>
             <InputGroup>
               <FormControl value={newKeyNumber} name="number" onChange={handleChange}  aria-label="With textarea" />
@@ -211,7 +212,7 @@ function IssueModal(props) {
   const [checkDisabled, setCheckDisabled] = useState(true)
   const issueModalIndex = props.children.issueModalIndex
 
-  function handleChange(e) {
+  const handleChange = e => {
     const { target : {value, name} } = e
     setNewOwner(value)
     if (value !== "" && value != null) {
@@ -221,17 +222,17 @@ function IssueModal(props) {
     }
 
   }
-  function resetModal(){
-    setNewOwner(null);
+  const resetModal = () =>{
+    setNewOwner("");
     setCheckDisabled(true);
   }
-  function submitIssue() {
+  const submitIssue = () => {
     if (newOwner !== null && newOwner !== ""){
       props.children.issueFunc({newOwner,issueModalIndex})
       resetModal()
     }
   }
-  function enterSubmit(e) {
+  const enterSubmit = e => {
     if (e.charCode === 13) {
       submitIssue()
     }
@@ -263,7 +264,7 @@ function IssueModal(props) {
 }
 
 function KeyFormat(key, index, functions) {
-  function onClickHandler() {
+  const onClickHandler = () => {
     functions.keyIndex(index)
     functions.issueModal(index)
   }
@@ -275,10 +276,10 @@ function KeyFormat(key, index, functions) {
       <Col>{key.issueDate}</Col>
       <Col>{key.returnDate}</Col>
       <Col>
-        {key.owner !== null &&
+        {key.owner !== "" &&
           <Button onClick={() => functions.returnFunc(index)}>Return</Button>
         }
-        {key.owner === null &&
+        {key.owner === "" &&
           <Button onClick={onClickHandler}>Issue Key</Button>
         }
 
@@ -302,42 +303,266 @@ function ListKeys(props) {
   )
 }
 
+function Filter(props) { 
+  const filterVars = props.children.filterVars;
+  const trueKeyList = props.children.trueKeyList;
+  let filters = {
+    typeFilter:filterVars.typeFilter,
+    numberFilter:filterVars.numberFilter,
+    ownerFilter:filterVars.ownerFilter,
+    issueDateFilter:filterVars.issueDateFilter,
+    returnDateFilter:filterVars.returnDateFilter,
+  }
+  const resetFilters = () => {
+    Object.keys(filters).map(name => {
+      filters[name] = ""
+    })
+    props.children.setFilterVars(filters)
+    props.children.setKeyList(trueKeyList)
+  }
+  const filtering = (value, name) => {    
+    filters[name] = value
+    props.children.setFilterVars(filters)
+    let filterList = {
+      type: [],
+      number:[],
+      owner:[],
+      issueDate:[],
+      returnDate:[]
+    }
+    trueKeyList.map(key => {
+      Object.entries(filters).map(filter => {
+        if (filter[1] !== "" && filter[1] !== null && filter[1] !== undefined) {
+          switch (filter[0]) {
+            case "typeFilter":
+              if (key.type.includes(filter[1])){
+                filterList.type.push(key._id);
+              }
+              break;
+            case "numberFilter":
+              if (key.number.toString().includes(filter[1])){
+                filterList.number.push(key._id);
+              }
+              
+              break;
+            case "ownerFilter":
+              if (filter[1] === "0" && key.owner === "") {
+                filterList.owner.push(key._id)
+              } else {
+                if (key.owner.includes(filter[1])) {
+                  filterList.owner.push(key._id);
+                }
+              }
+              break;
+            case "issueDateFilter":
+              if (key.issueDate.includes(filter[1])) {
+                filterList.issueDate.push(key._id);
+              }
+              break;
+            case "returnDateFilter":
+              if (key.returnDate.includes(filter[1])) {
+                filterList.returnDate.push(key._id);
+              }
+              break;
+            default:
+              break;
+          }
+        } else {
+          switch (filter[0]) {
+            case "typeFilter":
+              filterList.type = null;
+              break;
+            case "numberFilter":
+              filterList.number = null;
+              break;
+            case "ownerFilter":
+              filterList.owner = null;
+              break;
+            case "issueDateFilter":
+              filterList.issueDate = null;
+              break;
+            case "returnDateFilter":
+              filterList.returnDate = null;
+              break;
+            default:
+              break;
+
+          }
+        }
+      })
+    })
+    let filterFlattened = [];
+    let tempFilterList = [];
+    Object.entries(filterList).map(filter => {
+      if (filter[1] !== null && filter[1] !== ""){
+        if (filterFlattened.length < 1) {
+          filterFlattened.push(filter[1])
+        } else {
+          filterFlattened[0].map((filtered_id, index)=> {
+            if(!filter[1].includes(filtered_id)) {
+              if (!tempFilterList.includes(index)) {
+                tempFilterList.push(index)
+              }
+            }
+          })
+
+
+        }
+      }
+    })
+    tempFilterList.map(index => {
+      filterFlattened[0][index] = ""
+    })
+    let tempKeyList = []
+    if (filterFlattened.length > 0){
+      filterFlattened[0].map(key_id=> {
+        if (key_id !== ""){
+          // Got an issue when deleting a filter it will give all results for one of
+          // the left over filters
+          trueKeyList.map(key => {
+            if (key._id === key_id) {
+              tempKeyList.push(key)
+            }
+          })
+        }
+      })
+      props.children.setKeyList(tempKeyList)
+    } else {
+      props.children.setKeyList(trueKeyList)
+    }
+    
+  }
+  const handleChange = e => {
+    const { target : {value, name} } = e
+    filtering(value, name);
+  }
+  // next step is to connect in a keyList state function to update the current list with 
+  return (
+    <>  
+      <Row>
+        <Col>
+          <InputGroup>
+            <FormControl name="typeFilter" value={filters.typeFilter} onChange={handleChange}/>
+        </InputGroup>
+        </Col>
+        <Col>
+          <InputGroup>
+            <FormControl name="numberFilter" value={filters.numberFilter} onChange={handleChange}/>
+          </InputGroup>
+        </Col>
+        <Col>
+          <InputGroup>
+            <FormControl name="ownerFilter" value={filters.ownerFilter} onChange={handleChange}/>
+          </InputGroup>
+        </Col>
+        <Col>
+          <InputGroup>
+            <FormControl name="issueDateFilter" value={filters.issueDateFilter} onChange={handleChange}/>
+          </InputGroup>
+        </Col>
+        <Col>
+          <InputGroup>
+            <FormControl name="returnDateFilter" value={filters.returnDateFilter} onChange={handleChange}/>
+          </InputGroup>
+        </Col>
+        <Col>
+        <Button block onClick={resetFilters} >reset</Button>
+        </Col>
+      </Row>
+      
+    </>
+  )
+}
+
 function App() {
+  const [trueKeyList, setTrueKeyList] = useState([])
   const [keyList, setKeyList] = useState([])
+  const [keysLoaded, setKeysLoaded] = useState(false)
+  const [keysLoading, setKeysLoading] = useState(false)
+  const date = new Date().toDateString()
+
   // used to get the keyList from mongo
   useEffect(async () => {
-    if (keyList.length === 0) {
+    console.log("rendered")
+    if (!keysLoaded && !keysLoading) {
+      setKeysLoading(true)
       const result = await getKeys();
       setKeyList(result)
+      setTrueKeyList(result)
+      setKeysLoaded(true)
     }
   })
+  
   const [addModalShow, setAddModalShow] = useState(false)
   const [issueModalShow, setIssueModalShow] = useState(false)
   const [issueModalIndex, setIssueModalIndex] = useState(null)
-  var tempKeyList
-  function addKey(props) {
-    tempKeyList = keyList;
+  const [showFilter, setShowFilter] = useState(false)
+  const [filterVars, setFilterVars] = useState({
+    typeFilter:"",
+    numberFilter:"",
+    ownerFilter:"",
+    issueDateFilter:"",
+    returnDateFilter:"",
+  })
+  var tempKeyList;
+  const updateTrueKeyList = (_idToUpdate, updateType, props) => {
+    tempKeyList = [...trueKeyList];
+    switch (updateType) {
+      case "add":
+        tempKeyList.push(props)
+        break;
+      default:
+        tempKeyList.map(key => {
+          if (key._id === _idToUpdate) {
+            switch(updateType) {
+              case "return":
+                key.owner = "";
+                key.returnDate = date;
+                break;
+              case "issue":
+                key.owner = props;
+                key.issueDate = date;
+                break;
+            }
+          }
+        });
+        break
+    }
+    setTrueKeyList(tempKeyList);
+    
+  }
+  const addKey = props => {
+    tempKeyList = [...keyList];
     tempKeyList.push(props)
     setKeyList(tempKeyList)
+    updateTrueKeyList(null, "add", props)
     keyDbUpdate(props)
   }
-  function returnKey(index) {
-    // setKeyList({...keyList, index  : {keyOwner: null}})
+  const returnKey = index => {
     tempKeyList = [...keyList];
-    tempKeyList[index].owner = null
-    tempKeyList[index].returnDate = new Date().toDateString()
-    returnDbUpdate(tempKeyList[index]._id)
+    const _idToUpdate = tempKeyList[index]._id;
+    tempKeyList[index].owner = "";
+    tempKeyList[index].returnDate = date;
     setKeyList(tempKeyList)
+    returnDbUpdate(_idToUpdate)
+    updateTrueKeyList(_idToUpdate, "return")                                               
   }
-  function issueKey(index) {
-    console.log(index)
+  const issueKey = props => {
     tempKeyList = [...keyList];
-    tempKeyList[index.issueModalIndex].owner = index.newOwner;
-    tempKeyList[index.issueModalIndex].issueDate = new Date().toDateString()
-    // let toUpdate = tempKeyList[index.issueModalIndex];
-    issueDbUpdate(tempKeyList[index.issueModalIndex])
+    const _idToUpdate = tempKeyList[props.issueModalIndex]._id;
+    tempKeyList[props.issueModalIndex].owner = props.newOwner;
+    tempKeyList[props.issueModalIndex].issueDate = new Date().toDateString()
+    issueDbUpdate(tempKeyList[props.issueModalIndex])
+    updateTrueKeyList(_idToUpdate, "issue", props.newOwner)
     setKeyList(tempKeyList)
     setIssueModalShow(false)
+  }
+  const toggleFilter = () => {
+    if (showFilter) {
+      setShowFilter(false)
+    } else {
+      setShowFilter(true)
+    }
   }
   return (
     <Container fluid >
@@ -347,8 +572,17 @@ function App() {
         </Col>
       </Row>
       <Row>
-        {/* <Button variant="secondary" block size='sm'>Filter</Button> */}
+        <Button onClick={toggleFilter} variant="secondary" block size='sm'>Filter</Button>
       </Row>
+      {showFilter && keysLoaded && <Filter
+          children={{
+            keyList: keyList,
+            trueKeyList: trueKeyList,
+            setKeyList: filteredList => setKeyList(filteredList),
+            filterVars: filterVars,
+            setFilterVars: newFilter => setFilterVars(newFilter),
+          }}
+        />}
       <Row>
         <Col>Key Type</Col>
         <Col>Key #</Col>
@@ -357,7 +591,7 @@ function App() {
         <Col>Return Date</Col>
         <Col></Col>
       </Row>
-      {keyList.length > 0 &&
+      {keysLoaded &&
         <>
           <ListKeys
             keyList={keyList}
@@ -368,16 +602,6 @@ function App() {
               keyIndex: index => setIssueModalIndex(index),
             }}
           />
-          <AddModal
-            show={addModalShow}
-            onHide={() => setAddModalShow(false)}
-            children={
-              {
-                keyList: keyList,
-                newKey:newKey => addKey(newKey)
-            }
-            }
-          />
           <IssueModal 
             show={issueModalShow}
             onHide={() => setIssueModalShow(false)}
@@ -387,10 +611,16 @@ function App() {
               issueModalIndex: issueModalIndex
             }}
           />
+          <AddModal
+            show={addModalShow}
+            onHide={() => setAddModalShow(false)}
+            children={{
+                keyList: trueKeyList,
+                newKey:newKey => addKey(newKey)
+            }}
+          />
         </>
       }
-      
-
     </Container>  
   );
 }
