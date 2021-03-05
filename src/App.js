@@ -2,6 +2,7 @@ import './App.css';
 import {Container, Row, Col, Button, Modal, InputGroup, FormControl, DropdownButton, Dropdown, Spinner} from 'react-bootstrap'
 import { useState, useEffect } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
+const crypto = require('crypto');
 
 const url = "http://192.168.2.5:3001/" 
 
@@ -22,7 +23,48 @@ async function getKeys() {
     }
   }).then((response) => response)
 }
-
+async function login(props) {
+  return fetch (url + "login", {
+    method: "POST",
+    body: "passphrase=" + props,
+    headers: {
+      "Content-type": "application/x-www-form-urlencoded"
+    }
+  }).then((response) => {
+    if (response.ok) {
+      return response.json();
+    } else {
+      return false
+    }
+  }).then((response) => {
+    if (!response) {
+      return false;
+    } else {
+      if (response.login){ // note that response contains the type of account allowing
+        // for an admin panel that allows addition of users and the loaning/returning of keys and
+        // a user panel that can only view and possibly issue
+        return true
+      } else {
+        return false
+      }
+    }
+  })
+}
+async function getKeyHistory(props) {
+  return fetch(url + "keyHistory", {
+    method: "POST", // should change this over to a GET request and just put the id in the url
+    body: "_id=" + props,
+    headers: {
+      "Content-type": "application/x-www-form-urlencoded"
+    }
+  }).then(response => {
+    if (response.ok) {
+      return response.json();
+    }
+  }).then(response => {
+    return response.response
+  })
+}
 async function issueDbUpdate(props) {
   const toUpdate = {
     _id: props._id,
@@ -36,7 +78,6 @@ async function issueDbUpdate(props) {
     }
   }).then((response) => {
     if (response.ok) {
-      
     } else {
       console.log(response)
     }
@@ -80,24 +121,39 @@ async function keyDbUpdate(props) {
     if (response.ok) {
 
     } else {
-      console.log(response)
+      console.log(response[0])
     }
   })
 }
+
+async function archiveDbUpdate(props) {
+  fetch(url + "archive", {
+    method: "POST",
+    body: "toArchive=" + JSON.stringify(props),
+    headers: {
+      "Content-type": "application/x-www-form-urlencoded"
+    }
+  }).then(response => {
+    if (response.ok) {
+      console.log(response.json())
+    }
+  })
+}
+
 function AddModal(props) {
   const [checkDisabled, setCheckDisabled] = useState(false) 
   const [newKeyNumber, setNewKeyNumber] = useState(props.children.keyList.length + 1)
   const [newKeyType, setNewKeyType] = useState("A")
   const [newKeyOwner, setNewKeyOwner] = useState("")
   const [typeOther, setTypeOther] = useState(false)
-  function resetModal() {
+  const resetModal = () => {
     setCheckDisabled(false)
     setNewKeyNumber(props.children.keyList.length + 1)
     setNewKeyType("A")
     setNewKeyOwner("")
     setTypeOther(false)
   }
-  function handleChange(e) {
+  const handleChange = e => {
     const { target : {value, name} } = e
     switch (name) {
       case "number":
@@ -124,12 +180,12 @@ function AddModal(props) {
    }
     
   }
-  function enterSubmit(e) {
+  const enterSubmit = e => {
     if (e.charCode === 13) {
       prepKey()
     }
   }
-  function prepKey() {
+  const prepKey = () => {
     let newKey = {
       type: newKeyType,
       number: newKeyNumber,
@@ -205,8 +261,6 @@ function AddModal(props) {
   )
 }
 
-
-
 function IssueModal(props) {
   const [newOwner, setNewOwner] = useState(null)
   const [checkDisabled, setCheckDisabled] = useState(true)
@@ -262,35 +316,171 @@ function IssueModal(props) {
     </Modal>
   )
 }
+function KeyHistory(props) {
+  const [keyHistoryLoading, setKeyHistoryLoading] = useState(false) 
+  const [keyHistoryLoaded, setKeyHistoryLoaded] = useState(false)
+  const [outputArray, setOutputArray] = useState([])
+  const _id = props.children.key._id
+
+  useEffect(async () => {
+    if (!keyHistoryLoading) {
+      setKeyHistoryLoading(true);
+      const localKeyHistory = await getKeyHistory(_id);
+      if (typeof(localKeyHistory) === "object" ) {
+        autofill(localKeyHistory)
+        setKeyHistoryLoaded(true);
+      } else {
+        setOutputArray((
+          <Row>
+            <Col> 
+              No history for this key
+            </Col>
+          </Row>
+        ))
+        setKeyHistoryLoaded(true)
+      }
+    }
+  })
+  const autofill = localKeyHistory => {
+    let temp = [];
+    // const tempKeyHistory = keyHistory;
+    localKeyHistory.slice(0).reverse().map(key => {
+      temp.push(
+        <>
+        <hr style={props.children.hrStyle} />
+        <Row key={key._id}>
+          <Col>{key.owner}</Col>
+          <Col>{key.issueDate}</Col>
+          <Col>{key.returnDate}</Col>
+        </Row>
+        </>
+      )
+    })
+   setOutputArray(temp)
+  }
+
+  if (!keyHistoryLoaded && keyHistoryLoading) {
+    return (
+      <>
+        Loading History...{' '}
+        <Spinner size="sm" animation="border" role="status">
+          <span ></span>
+        </Spinner>
+      </>
+    )
+  } else {
+    return (
+      <>
+        {outputArray}
+      </>
+    )
+  }
+  
+}
+function KeyModal(props) {
+  const key = props.children.key
+  const hrStyle = {
+   "backgroundColor": "black",
+  }
+  return (
+    <Modal 
+      {...props}
+      aria-labelledby="contained-modal-tittle-vcenter"
+      centered
+      size="lg"
+    >
+      <Modal.Header closeButton>
+        <Modal.Title id="contained-modal-title-vcenter">
+          Key: {key.number}
+        </Modal.Title>
+      </Modal.Header>
+      <Modal.Body>
+        <Row>
+          <Col>
+            Key Type: {key.type}
+          </Col>
+          <Col>
+            Issued To: {key.owner}
+          </Col>
+        </Row>
+        <Row>
+          <Col>
+          </Col>
+          <Col>
+            Issue Date: {key.issueDate}
+          </Col>
+        </Row>
+        <br />
+        <Row>
+          <Col><h4>History</h4></Col>
+        </Row>
+        <Row>
+          <Col>
+            Issued to:
+          </Col>
+          <Col>
+            Issue date:
+          </Col>
+          <Col >
+            Return date:
+          </Col>
+        </Row>
+        <KeyHistory
+          children={{
+            hrStyle: hrStyle,
+            key: key
+          }}
+        />
+      </Modal.Body>
+    </Modal>
+  )
+}
 
 function KeyFormat(key, index, functions) {
+  const [keyModalShow, setKeyModalShow] = useState(false)
   const onClickHandler = () => {
     functions.keyIndex(index)
     functions.issueModal(index)
   }
   return (
-    <Row key={index}>
-      <Col>{key.type}</Col>
-      <Col>{key.number}</Col>
-      <Col>{key.owner}</Col>
-      <Col>{key.issueDate}</Col>
-      <Col>{key.returnDate}</Col>
-      <Col>
-        {key.owner !== "" &&
-          <Button onClick={() => functions.returnFunc(index)}>Return</Button>
-        }
-        {key.owner === "" &&
-          <Button onClick={onClickHandler}>Issue Key</Button>
-        }
+    <div key={index}>
+      <hr />
+      <Row>
+        <Col>{key.type}</Col>
+        <Col>{key.number}</Col>
+        <Col>{key.owner}</Col>
+        <Col>{key.issueDate}</Col>
+        <Col>{key.returnDate}</Col>
+        <Col>
+              {key.owner !== "" && key.owner !== null &&
+                <Button block variant="success" onClick={() => functions.returnFunc(index)}>Return</Button>
+              }
+              {key.owner === "" && key.owner !== null &&
+                <Button block   onClick={onClickHandler}>Issue Key</Button>
+              }
+            <KeyModal
+              show={keyModalShow}
+              onHide={() => setKeyModalShow(false)}
+              children = {{
+                key: key
+              }}
+            />
+        </Col>
+      </Row>
+      <Row>
+        <Col>
+            {/* <Button block variant="outline-info" >details</Button> */}
+            <Button block variant="outline-info" onClick={() => setKeyModalShow(true)}>details</Button>
 
-      </Col>
-    </Row>
+          </Col>
+      </Row>
+    </div>
   )
 }
 
 function ListKeys(props) {
   var keyOutput;
-  let functions = {
+  const functions = {
     returnFunc: props.children.returnFunc,
     issueModal: props.children.issueModal,
     keyIndex: props.children.keyIndex,
@@ -303,26 +493,7 @@ function ListKeys(props) {
   )
 }
 
-function Filter(props) { 
-  const filterVars = props.children.filterVars;
-  const trueKeyList = props.children.trueKeyList;
-  let filters = {
-    typeFilter:filterVars.typeFilter,
-    numberFilter:filterVars.numberFilter,
-    ownerFilter:filterVars.ownerFilter,
-    issueDateFilter:filterVars.issueDateFilter,
-    returnDateFilter:filterVars.returnDateFilter,
-  }
-  const resetFilters = () => {
-    Object.keys(filters).map(name => {
-      filters[name] = ""
-    })
-    props.children.setFilterVars(filters)
-    props.children.setKeyList(trueKeyList)
-  }
-  const filtering = (value, name) => {    
-    filters[name] = value
-    props.children.setFilterVars(filters)
+const updateFilter = (filters, trueKeyList) => {
     let filterList = {
       type: [],
       number:[],
@@ -348,7 +519,10 @@ function Filter(props) {
             case "ownerFilter":
               if (filter[1] === "0" && key.owner === "") {
                 filterList.owner.push(key._id)
+              } else if (filter[1] === "1" && key.owner !== "") {
+                filterList.owner.push(key._id)
               } else {
+
                 if (key.owner.includes(filter[1])) {
                   filterList.owner.push(key._id);
                 }
@@ -405,8 +579,6 @@ function Filter(props) {
               }
             }
           })
-
-
         }
       }
     })
@@ -417,8 +589,6 @@ function Filter(props) {
     if (filterFlattened.length > 0){
       filterFlattened[0].map(key_id=> {
         if (key_id !== ""){
-          // Got an issue when deleting a filter it will give all results for one of
-          // the left over filters
           trueKeyList.map(key => {
             if (key._id === key_id) {
               tempKeyList.push(key)
@@ -426,11 +596,27 @@ function Filter(props) {
           })
         }
       })
-      props.children.setKeyList(tempKeyList)
+      return tempKeyList
     } else {
-      props.children.setKeyList(trueKeyList)
+      return(trueKeyList)
     }
     
+}
+
+function Filter(props) { 
+  let filters = props.children.filterVars;
+  const trueKeyList = props.children.trueKeyList;
+  const resetFilters = () => {
+    Object.keys(filters).map(name => {
+      filters[name] = ""
+    })
+    props.children.setFilterVars(filters);
+    props.children.setKeyList(trueKeyList);
+  }
+  const filtering = (value, name) => {    
+    filters[name] = value
+    props.children.setFilterVars(filters);
+    props.children.setKeyList(updateFilter(filters, trueKeyList))
   }
   const handleChange = e => {
     const { target : {value, name} } = e
@@ -473,23 +659,77 @@ function Filter(props) {
     </>
   )
 }
+function Login(props) {
+  const [passphrase, setPassphrase] = useState([""]);
+  const handleChange = e => {
+    e.preventDefault()
+    const {target: {value}} = e
+    setPassphrase(value)
+  }
+  const enterSubmit = e => {
+    if (e.charCode === 13) {
+      handleClick()
+    }
+  }
+  const handleClick = async () => {
+    const hash = crypto.createHash('sha256');
+    hash.update(passphrase)
+    const loginRes = await login(hash.digest("hex"))
+    // login function contains user info which can be brought in to allow the implementation of user based adjustment
+    if (loginRes) {
+      props.children.setIsLoggedIn(true)
+    }
+  }
+  return (
+    <Container >
+      <Row >
+        <Col className="align-center" >
+          <InputGroup>
+            <FormControl name="passphrase" value={passphrase} onChange={handleChange} placeholder={"passphrase"} onKeyPress={enterSubmit}/>
+            <InputGroup.Append>
+              <Button onClick={() => handleClick()}>Login</Button>
+            </InputGroup.Append>
+          </InputGroup>
+        </Col>
+      </Row>
+    </Container>
+  )
+}
+
+function archiveKey(key) {
+  const prepKey = {
+    key_id: key._id,
+    owner: key.owner,
+    issueDate: key.issueDate,
+    returnDate: key.returnDate
+  }
+  archiveDbUpdate(prepKey)
+}
 
 function App() {
+
+  const loginSet = false;
+
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
+ 
   const [trueKeyList, setTrueKeyList] = useState([])
   const [keyList, setKeyList] = useState([])
   const [keysLoaded, setKeysLoaded] = useState(false)
   const [keysLoading, setKeysLoading] = useState(false)
   const date = new Date().toDateString()
-
   // used to get the keyList from mongo
+
+  // Check that you can't access this data outside the lock screen. Shouldn't run till logged in
   useEffect(async () => {
-    console.log("rendered")
-    if (!keysLoaded && !keysLoading) {
-      setKeysLoading(true)
-      const result = await getKeys();
-      setKeyList(result)
-      setTrueKeyList(result)
-      setKeysLoaded(true)
+    // console.log(keyList)
+    if (!loginSet || isLoggedIn){
+      if (!keysLoaded && !keysLoading) {
+        setKeysLoading(true)
+        const result = await getKeys();
+        setKeyList(result)
+        setTrueKeyList(result)
+        setKeysLoaded(true)
+      }
     }
   })
   
@@ -504,9 +744,8 @@ function App() {
     issueDateFilter:"",
     returnDateFilter:"",
   })
-  var tempKeyList;
   const updateTrueKeyList = (_idToUpdate, updateType, props) => {
-    tempKeyList = [...trueKeyList];
+    let tempKeyList = [...trueKeyList];
     switch (updateType) {
       case "add":
         tempKeyList.push(props)
@@ -528,33 +767,30 @@ function App() {
         });
         break
     }
-    setTrueKeyList(tempKeyList);
-    
+    setTrueKeyList(tempKeyList)
+    return(tempKeyList)
   }
   const addKey = props => {
-    tempKeyList = [...keyList];
-    tempKeyList.push(props)
-    setKeyList(tempKeyList)
-    updateTrueKeyList(null, "add", props)
+    const testtrueKeyList = updateTrueKeyList(null, "add", props)
+    setKeyList(updateFilter(filterVars, testtrueKeyList))
     keyDbUpdate(props)
   }
   const returnKey = index => {
-    tempKeyList = [...keyList];
-    const _idToUpdate = tempKeyList[index]._id;
-    tempKeyList[index].owner = "";
-    tempKeyList[index].returnDate = date;
-    setKeyList(tempKeyList)
+    archiveKey(keyList[index])
+    const _idToUpdate = keyList[index]._id;
+    const trueKeyList = updateTrueKeyList(_idToUpdate, "return");           
+    setKeyList(updateFilter(filterVars, trueKeyList));
     returnDbUpdate(_idToUpdate)
-    updateTrueKeyList(_idToUpdate, "return")                                               
+    
   }
   const issueKey = props => {
-    tempKeyList = [...keyList];
-    const _idToUpdate = tempKeyList[props.issueModalIndex]._id;
-    tempKeyList[props.issueModalIndex].owner = props.newOwner;
-    tempKeyList[props.issueModalIndex].issueDate = new Date().toDateString()
-    issueDbUpdate(tempKeyList[props.issueModalIndex])
-    updateTrueKeyList(_idToUpdate, "issue", props.newOwner)
-    setKeyList(tempKeyList)
+    let issueKeyList = [...keyList];
+    const _idToUpdate = issueKeyList[props.issueModalIndex]._id;
+    issueKeyList[props.issueModalIndex].owner = props.newOwner;
+    issueKeyList[props.issueModalIndex].issueDate = new Date().toDateString()
+    issueDbUpdate(issueKeyList[props.issueModalIndex])
+    const trueKeyList = updateTrueKeyList(_idToUpdate, "issue", props.newOwner) // updates keyList...
+    setKeyList(updateFilter(filterVars, trueKeyList))
     setIssueModalShow(false)
   }
   const toggleFilter = () => {
@@ -564,65 +800,77 @@ function App() {
       setShowFilter(true)
     }
   }
-  return (
-    <Container fluid >
-      <Row >
-        <Col>
-          <Button size="lg" block onClick={() => setAddModalShow(true)}>Add</Button>
-        </Col>
-      </Row>
-      <Row>
-        <Button onClick={toggleFilter} variant="secondary" block size='sm'>Filter</Button>
-      </Row>
-      {showFilter && keysLoaded && <Filter
-          children={{
-            keyList: keyList,
-            trueKeyList: trueKeyList,
-            setKeyList: filteredList => setKeyList(filteredList),
-            filterVars: filterVars,
-            setFilterVars: newFilter => setFilterVars(newFilter),
-          }}
-        />}
-      <Row>
-        <Col>Key Type</Col>
-        <Col>Key #</Col>
-        <Col>Issued To</Col>
-        <Col>Issue Date</Col>
-        <Col>Return Date</Col>
-        <Col></Col>
-      </Row>
-      {keysLoaded &&
-        <>
-          <ListKeys
-            keyList={keyList}
-            setKeyList={setKeyList}
-            children={{
-              returnFunc: index => returnKey(index),
-              issueModal: () => setIssueModalShow(true),
-              keyIndex: index => setIssueModalIndex(index),
-            }}
-          />
-          <IssueModal 
-            show={issueModalShow}
-            onHide={() => setIssueModalShow(false)}
+  if (!isLoggedIn && loginSet){
+    return (
+      <Login
+        children={{
+          setIsLoggedIn: () => setIsLoggedIn(true)
+        }}
+      />
+    )
+    
+  } else {
+    return (
+      <Container fluid >
+        <Row >
+          <Col>
+            <Button size="lg" block onClick={() => setAddModalShow(true)}>Add</Button>
+          </Col>
+        </Row>
+        <Row>
+          <Button onClick={toggleFilter} variant="secondary" block size='sm'>Filter</Button>
+        </Row>
+        {showFilter && keysLoaded && <Filter
             children={{
               keyList: keyList,
-              issueFunc: props => issueKey(props),
-              issueModalIndex: issueModalIndex
+              trueKeyList: trueKeyList,
+              setKeyList: filteredList => setKeyList(filteredList),
+              filterVars: filterVars,
+              setFilterVars: newFilter => setFilterVars(newFilter),
             }}
-          />
-          <AddModal
-            show={addModalShow}
-            onHide={() => setAddModalShow(false)}
-            children={{
-                keyList: trueKeyList,
-                newKey:newKey => addKey(newKey)
-            }}
-          />
-        </>
-      }
-    </Container>  
-  );
+          />}
+        <Row>
+          <Col>Key Type</Col>
+          <Col>Key #</Col>
+          <Col>Issued To</Col>
+          <Col>Issue Date</Col>
+          <Col>Return Date</Col>
+          <Col></Col>
+        </Row>
+        {keysLoaded &&
+          <>
+            <ListKeys
+              keyList={keyList}
+              setKeyList={setKeyList}
+              children={{
+                returnFunc: index => returnKey(index),
+                issueModal: () => setIssueModalShow(true),
+                keyIndex: index => setIssueModalIndex(index),
+              }}
+            />
+            <IssueModal 
+              show={issueModalShow}
+              onHide={() => setIssueModalShow(false)}
+              children={{
+                keyList: keyList,
+                issueFunc: props => issueKey(props),
+                issueModalIndex: issueModalIndex
+              }}
+            />
+            <AddModal
+              show={addModalShow}
+              onHide={() => setAddModalShow(false)}
+              children={{
+                  keyList: trueKeyList,
+                  newKey:newKey => addKey(newKey)
+              }}
+            />
+          </>
+        }
+      </Container>  
+    );
+  }
 }
+  
 
 export default App;
