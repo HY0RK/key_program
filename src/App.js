@@ -88,6 +88,7 @@ async function returnDbUpdate(props) {
   const  toUpdate = {
     _id: props
   }
+  console.log(toUpdate)
   return fetch(url + "returnKey", {
     method: "POST",
     body: "toUpdate=" + JSON.stringify(toUpdate),
@@ -103,7 +104,7 @@ async function returnDbUpdate(props) {
   })
 }
 
-async function keyDbUpdate(props) {
+async function keyDbUpdate(props, functions) {
   const body = {
     number: props.number,
     type: props.type,
@@ -111,7 +112,7 @@ async function keyDbUpdate(props) {
     issueDate: props.issueDate,
     returnDate: props.returnDate,
   }
-  fetch(url + "addKey", {
+  await fetch(url + "addKey", {
     method: "POST",
     body: "toAdd=" + JSON.stringify(body),
     headers: {
@@ -119,10 +120,20 @@ async function keyDbUpdate(props) {
     }
   }).then((response) => {
     if (response.ok) {
-
+        return response.json()
     } else {
       console.log(response[0])
     }
+  }).then (response => {
+    // body._id = response.key_id;
+    // const trueKeyList = functions.updateTrueKeyList(null, "add", body)
+    // functions.setTrueKeyList(trueKeyList);
+    // console.log(trueKeyList)
+
+    // const updatedFilter = functions.updateFilter(functions.filterVars, trueKeyList)
+    // console.log(updateFilter)
+    // functions.setKeyList(updateFilter)
+    
   })
 }
 
@@ -346,14 +357,14 @@ function KeyHistory(props) {
     // const tempKeyHistory = keyHistory;
     localKeyHistory.slice(0).reverse().map(key => {
       temp.push(
-        <>
+        <div key={key._id}>
         <hr style={props.children.hrStyle} />
-        <Row key={key._id}>
+        <Row>
           <Col>{key.owner}</Col>
           <Col>{key.issueDate}</Col>
           <Col>{key.returnDate}</Col>
         </Row>
-        </>
+        </div>
       )
     })
    setOutputArray(temp)
@@ -436,8 +447,7 @@ function KeyModal(props) {
   )
 }
 
-function KeyFormat(key, index, functions) {
-  const [keyModalShow, setKeyModalShow] = useState(false)
+function KeyFormat(key, index, functions, keyModal) {
   const onClickHandler = () => {
     functions.keyIndex(index)
     functions.issueModal(index)
@@ -458,19 +468,13 @@ function KeyFormat(key, index, functions) {
               {key.owner === "" && key.owner !== null &&
                 <Button block   onClick={onClickHandler}>Issue Key</Button>
               }
-            <KeyModal
-              show={keyModalShow}
-              onHide={() => setKeyModalShow(false)}
-              children = {{
-                key: key
-              }}
-            />
+            
         </Col>
       </Row>
       <Row>
         <Col>
             {/* <Button block variant="outline-info" >details</Button> */}
-            <Button block variant="outline-info" onClick={() => setKeyModalShow(true)}>details</Button>
+            <Button block variant="outline-info" onClick={() => keyModal(index)}>details</Button>
 
           </Col>
       </Row>
@@ -480,16 +484,31 @@ function KeyFormat(key, index, functions) {
 
 function ListKeys(props) {
   var keyOutput;
+  const [showKeyModal, setShowKeyModal] = useState(false);
+  const [modalKey, setModalKey]= useState({})
   const functions = {
     returnFunc: props.children.returnFunc,
     issueModal: props.children.issueModal,
     keyIndex: props.children.keyIndex,
   }
+  const keyModal = (index) => {
+    setModalKey(props.keyList[index])
+    setShowKeyModal(true)
+  }
   keyOutput = props.keyList.map(((key, index) =>
-    KeyFormat(key, index, functions)
+    KeyFormat(key, index, functions, keyModal)
   ))
   return(
-    keyOutput
+    <>
+    <KeyModal
+        show={showKeyModal}
+        onHide={() => setShowKeyModal(false)}
+        children = {{
+          key: modalKey,
+        }}
+      />
+    {keyOutput}
+    </>
   )
 }
 
@@ -501,6 +520,7 @@ const updateFilter = (filters, trueKeyList) => {
       issueDate:[],
       returnDate:[]
     }
+    console.log(trueKeyList)
     trueKeyList.map(key => {
       Object.entries(filters).map(filter => {
         if (filter[1] !== "" && filter[1] !== null && filter[1] !== undefined) {
@@ -596,6 +616,7 @@ const updateFilter = (filters, trueKeyList) => {
           })
         }
       })
+      
       return tempKeyList
     } else {
       return(trueKeyList)
@@ -696,15 +717,6 @@ function Login(props) {
   )
 }
 
-function archiveKey(key) {
-  const prepKey = {
-    key_id: key._id,
-    owner: key.owner,
-    issueDate: key.issueDate,
-    returnDate: key.returnDate
-  }
-  archiveDbUpdate(prepKey)
-}
 
 function App() {
 
@@ -770,15 +782,38 @@ function App() {
     setTrueKeyList(tempKeyList)
     return(tempKeyList)
   }
-  const addKey = props => {
-    const testtrueKeyList = updateTrueKeyList(null, "add", props)
-    setKeyList(updateFilter(filterVars, testtrueKeyList))
-    keyDbUpdate(props)
+  const archiveKey = key => {
+    const prepKey = {
+      key_id: key._id,
+      owner: key.owner,
+      issueDate: key.issueDate,
+      returnDate: date
+    }
+    archiveDbUpdate(prepKey)
   }
-  const returnKey = index => {
-    archiveKey(keyList[index])
-    const _idToUpdate = keyList[index]._id;
-    const trueKeyList = updateTrueKeyList(_idToUpdate, "return");           
+  const addKey = (props) => {
+    const trueKeyList = updateTrueKeyList(null, "add", props)
+    setKeyList(updateFilter(filterVars, trueKeyList))
+    keyDbUpdate(props)
+    // const functions = {
+    //   updateTrueKeyList: updateTrueKeyList,
+    //   setTrueKeyList: setTrueKeyList,
+    //   updateFilter: updateFilter,
+    //   filterVars: filterVars,
+    //   setKeyList: setKeyList,
+    // }
+    // keyDbUpdate(props, functions)
+    // // const trueKeyList =
+    // setKeyList(updateFilter(filterVars, trueKeyList))
+    // setKeyList(keyDbUpdate(props))
+  }
+  const returnKey  = index => {
+    let returnKeyList = [...keyList]
+    console.log(returnKeyList)
+    archiveKey(returnKeyList[index])
+    const _idToUpdate = returnKeyList[index]._id
+    const trueKeyList = updateTrueKeyList(_idToUpdate, "return");
+    console.log(returnKeyList[index])          
     setKeyList(updateFilter(filterVars, trueKeyList));
     returnDbUpdate(_idToUpdate)
     
@@ -788,6 +823,7 @@ function App() {
     const _idToUpdate = issueKeyList[props.issueModalIndex]._id;
     issueKeyList[props.issueModalIndex].owner = props.newOwner;
     issueKeyList[props.issueModalIndex].issueDate = new Date().toDateString()
+    issueKeyList[props.issueModalIndex].returnDate = ""
     issueDbUpdate(issueKeyList[props.issueModalIndex])
     const trueKeyList = updateTrueKeyList(_idToUpdate, "issue", props.newOwner) // updates keyList...
     setKeyList(updateFilter(filterVars, trueKeyList))
