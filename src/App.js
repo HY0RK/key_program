@@ -88,8 +88,7 @@ async function returnDbUpdate(props) {
   const  toUpdate = {
     _id: props
   }
-  console.log(toUpdate)
-  return fetch(url + "returnKey", {
+    return fetch(url + "returnKey", {
     method: "POST",
     body: "toUpdate=" + JSON.stringify(toUpdate),
     headers: {
@@ -125,14 +124,12 @@ async function keyDbUpdate(props, functions) {
       console.log(response[0])
     }
   }).then (response => {
-    // body._id = response.key_id;
-    // const trueKeyList = functions.updateTrueKeyList(null, "add", body)
-    // functions.setTrueKeyList(trueKeyList);
-    // console.log(trueKeyList)
-
-    // const updatedFilter = functions.updateFilter(functions.filterVars, trueKeyList)
-    // console.log(updateFilter)
-    // functions.setKeyList(updateFilter)
+    body._id = response.key_id;
+    const filterVars = functions.filterVars
+    const trueKeyList = functions.updateTrueKeyList(null, "add", body)
+    functions.setTrueKeyList(trueKeyList);
+    const updatedFilter = functions.updateFilter(filterVars, trueKeyList)
+    functions.setKeyList(updatedFilter)
     
   })
 }
@@ -228,7 +225,7 @@ function AddModal(props) {
         <Row>
           <Col>Key Type</Col>
           <Col>Key #</Col>
-          <Col>Issueed To</Col>
+          <Col>Issued To</Col>
         </Row>
         <Row>
           {!typeOther &&
@@ -259,7 +256,7 @@ function AddModal(props) {
           </Col>
           <Col>
             <InputGroup>
-              <FormControl placeholder="Leave blank if not issueed out" name="owner" onChange={handleChange} aria-label="Issueed to " onKeyPress={enterSubmit}/>
+              <FormControl placeholder="Leave blank if not issued" name="owner" onChange={handleChange} aria-label="Issued to " onKeyPress={enterSubmit}/>
             </InputGroup>
           </Col>
         </Row>
@@ -463,10 +460,10 @@ function KeyFormat(key, index, functions, keyModal) {
         <Col>{key.returnDate}</Col>
         <Col>
               {key.owner !== "" && key.owner !== null &&
-                <Button block variant="success" onClick={() => functions.returnFunc(index)}>Return</Button>
+                <Button block variant="warning" onClick={() => functions.returnFunc(index)}>Return</Button>
               }
               {key.owner === "" && key.owner !== null &&
-                <Button block   onClick={onClickHandler}>Issue Key</Button>
+                <Button block variant="success" onClick={onClickHandler}>Issue Key</Button>
               }
             
         </Col>
@@ -520,7 +517,6 @@ const updateFilter = (filters, trueKeyList) => {
       issueDate:[],
       returnDate:[]
     }
-    console.log(trueKeyList)
     trueKeyList.map(key => {
       Object.entries(filters).map(filter => {
         if (filter[1] !== "" && filter[1] !== null && filter[1] !== undefined) {
@@ -616,7 +612,6 @@ const updateFilter = (filters, trueKeyList) => {
           })
         }
       })
-      
       return tempKeyList
     } else {
       return(trueKeyList)
@@ -794,26 +789,21 @@ function App() {
   const addKey = (props) => {
     const trueKeyList = updateTrueKeyList(null, "add", props)
     setKeyList(updateFilter(filterVars, trueKeyList))
-    keyDbUpdate(props)
-    // const functions = {
-    //   updateTrueKeyList: updateTrueKeyList,
-    //   setTrueKeyList: setTrueKeyList,
-    //   updateFilter: updateFilter,
-    //   filterVars: filterVars,
-    //   setKeyList: setKeyList,
-    // }
-    // keyDbUpdate(props, functions)
-    // // const trueKeyList =
-    // setKeyList(updateFilter(filterVars, trueKeyList))
-    // setKeyList(keyDbUpdate(props))
+    // keyDbUpdate(props)
+    const functions = {
+      updateTrueKeyList: updateTrueKeyList,
+      setTrueKeyList: setTrueKeyList,
+      updateFilter: updateFilter,
+      filterVars: filterVars,
+      setKeyList: setKeyList,
+    }
+    keyDbUpdate(props, functions)
   }
   const returnKey  = index => {
     let returnKeyList = [...keyList]
-    console.log(returnKeyList)
     archiveKey(returnKeyList[index])
     const _idToUpdate = returnKeyList[index]._id
-    const trueKeyList = updateTrueKeyList(_idToUpdate, "return");
-    console.log(returnKeyList[index])          
+    const trueKeyList = updateTrueKeyList(_idToUpdate, "return");       
     setKeyList(updateFilter(filterVars, trueKeyList));
     returnDbUpdate(_idToUpdate)
     
@@ -850,11 +840,14 @@ function App() {
       <Container fluid >
         <Row >
           <Col>
-            <Button size="lg" block onClick={() => setAddModalShow(true)}>Add</Button>
+            <Button size="lg" variant="success" block onClick={() => setAddModalShow(true)}>Add Key</Button>
           </Col>
-        </Row>
-        <Row>
-          <Button onClick={toggleFilter} variant="secondary" block size='sm'>Filter</Button>
+          <Col>
+          <Button size="lg" block onClick={toggleFilter} variant="primary">Search</Button>
+          </Col>
+          <Col sm={"3"} lg="2">
+            <Button size = "lg" block variant="dark" >Admin</Button>
+          </Col>
         </Row>
         {showFilter && keysLoaded && <Filter
             children={{
