@@ -1,5 +1,5 @@
 import './App.css';
-import {Container, Row, Col, Button, Modal, InputGroup, FormControl, DropdownButton, Dropdown, Spinner} from 'react-bootstrap'
+import {Container, Row, Col, Button, Modal, Badge, InputGroup, FormControl, DropdownButton, Dropdown, Spinner, Form} from 'react-bootstrap'
 import { useState, useEffect } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
 const crypto = require('crypto');
@@ -50,6 +50,58 @@ async function login(props) {
     }
   })
 }
+
+async function getKeyTypes(){
+  return fetch(url + "keyTypes", {
+    method: "GET",
+    headers: {
+      "Content-type": "application/x-www-form-urlencoded"
+    }
+  }).then((response) => {
+    if (response.ok) {
+      return response.json();
+    } else {
+      console.log(response)
+    }
+  }).then((response) => response)
+}
+
+async function updateKey(_idToUpdate, newKey){
+  const toUpdate = {
+    _idToUpdate: _idToUpdate,
+    updatedKey: newKey
+  };
+  return fetch(url + "updateKey", {
+    method: "POST",
+    body: "toUpdate=" + JSON.stringify(toUpdate),
+    headers: {
+      "Content-type": "application/x-www-form-urlencoded"
+    }
+  }).then(response => {
+    if (response.ok) {
+      return response.json();
+    }
+  }).then(response => {
+    console.log(response)
+  })
+}
+
+async function  updateKeyTypes(props) {
+  fetch (url + "updateKeyTypes", {
+    method: "POST",
+    body:"newKeyTypes=" + JSON.stringify(props),
+    headers: {
+      "Content-type": "application/x-www-form-urlencoded"
+    }
+  }).then(response => {
+    if (response.ok) {
+      return response.json()
+    }
+  }).then(response => {
+    console.log(response)
+  })
+}
+
 async function getKeyHistory(props) {
   return fetch(url + "keyHistory", {
     method: "POST", // should change this over to a GET request and just put the id in the url
@@ -148,16 +200,33 @@ async function archiveDbUpdate(props) {
   })
 }
 
+function KeyTypeDropdown(props) {
+  const keyTypes = props.children.keyTypes
+  const setNewKeyType = props.children.setNewKeyType;
+  const newKeyType = props.children.newKeyType;
+  let tempArray = []
+  keyTypes.map(keyType => {
+    const keyDropdown = <Dropdown.Item key={keyType} name="type" onClick={() => setNewKeyType(keyType)}>{keyType}</Dropdown.Item>
+    tempArray.push(keyDropdown)
+  })
+  tempArray = (
+    <DropdownButton title={newKeyType}>
+      {tempArray}
+    </DropdownButton>
+  )
+  return(tempArray)
+}
+
 function AddModal(props) {
   const [checkDisabled, setCheckDisabled] = useState(false) 
-  const [newKeyNumber, setNewKeyNumber] = useState(props.children.keyList.length + 1)
-  const [newKeyType, setNewKeyType] = useState("A")
+  const [newKeyNumber, setNewKeyNumber] = useState("")
+  const [newKeyType, setNewKeyType] = useState("")
   const [newKeyOwner, setNewKeyOwner] = useState("")
   const [typeOther, setTypeOther] = useState(false)
   const resetModal = () => {
     setCheckDisabled(false)
-    setNewKeyNumber(props.children.keyList.length + 1)
-    setNewKeyType("A")
+    setNewKeyNumber("")
+    setNewKeyType("")
     setNewKeyOwner("")
     setTypeOther(false)
   }
@@ -230,14 +299,13 @@ function AddModal(props) {
         <Row>
           {!typeOther &&
             <Col className="justify-content-md-center">
-              <DropdownButton title={newKeyType}>
-                <Dropdown.Item name="type" onClick={() => setNewKeyType("A")}>A</Dropdown.Item>
-                <Dropdown.Item name="type" onClick={() => setNewKeyType("B")}>B</Dropdown.Item>
-                <Dropdown.Item name="type" onClick={() => setNewKeyType("C")}>C</Dropdown.Item>
-                <Dropdown.Item name="type" onClick={() => setNewKeyType("D")}>D</Dropdown.Item>
-                <Dropdown.Item name="type" onClick={() => setNewKeyType("E")}>E</Dropdown.Item>
-                <Dropdown.Item onClick={() => setTypeOther(true)}>Other</Dropdown.Item>
-              </DropdownButton>
+              <KeyTypeDropdown 
+                children={{
+                  keyTypes: props.children.keyTypes,
+                  newKeyType: newKeyType,
+                  setNewKeyType: newKeyType => setNewKeyType(newKeyType)
+                }}
+              />
             </Col>
           }
           {typeOther &&
@@ -264,6 +332,130 @@ function AddModal(props) {
       <Modal.Footer>
         <Button onClick={props.onHide}>Close</Button>
         <Button disabled={checkDisabled} onClick={prepKey} >Add</Button>
+      </Modal.Footer>
+    </Modal>
+  )
+}
+
+function ListKeyTypes(props) {
+  const keyTypes = props.children.keyTypes;
+  let tempArray = [];
+  keyTypes.map((keyType, index) => {
+    tempArray.push(
+      <Badge size="lg" variant="secondary" pill key={keyType}>
+        <Col>
+          {keyType}
+          {' '}
+          <Button size='sm' variant="secondary" value={index}  name={keyType} onClick={props.children.removeKeyType}>x</Button>
+        </Col>
+      </Badge>
+    )
+  })
+  tempArray = (
+    <>
+      {tempArray}
+    </>
+  )
+  return tempArray
+}
+
+function KeyTypeAdmin(props) {
+  const keyTypes = props.children.keyTypes;
+  const setKeyTypes = props.children.setKeyTypes;
+  const [newKeyType, setNewKeyType] = useState("")
+  const resetModal = () => {
+    setNewKeyType("")
+  }
+  const removeKeyType = e => {
+    const {target: {value, name}} = e;
+    const preSplit = keyTypes.slice(0, value)
+    const postSplit = keyTypes.slice(parseInt(value) + 1)
+    const newKeyTypes = preSplit.concat(postSplit)
+    setKeyTypes(newKeyTypes)
+    updateKeyTypes(newKeyTypes)
+  }
+  const addKeyType = () => {
+    let newKeyTypes = keyTypes
+    newKeyTypes.push(newKeyType)
+    updateKeyTypes(newKeyTypes);
+    setKeyTypes(newKeyTypes);
+    resetModal();
+  }
+  const enterSubmit = e => {
+    if (e.charCode === 13) {
+      addKeyType()
+    }
+  }
+  const handleChange = e => {
+    const {target: {value}} = e;
+    setNewKeyType(value)
+  }
+  return (
+    <>
+      <Row>
+        <Col xs={12} >
+          <div style={{"borderBottom": "solid", "borderColor":"grey"}}>
+            Key Types              
+          </div>
+        </Col>
+      </Row>
+      <Row>
+        <Col xs={6}>
+        <InputGroup>
+          <InputGroup.Prepend>
+            <InputGroup.Text>Add Type</InputGroup.Text>
+          </InputGroup.Prepend>
+          <FormControl value={newKeyType} onChange={handleChange} onKeyPress={enterSubmit}></FormControl>
+          <InputGroup.Append>
+            <Button onClick={() => addKeyType()}>Add</Button>
+          </InputGroup.Append>
+        </InputGroup>
+        </Col>
+        <Col xs={6}>
+          
+          <Row>
+            <Col>
+              <ListKeyTypes 
+                children={{
+                  keyTypes: keyTypes,
+                  removeKeyType: removeKeyType
+                }}
+              />
+            </Col>
+            {/* use pills to list out all of the existing types */}
+          </Row>
+        </Col>
+      </Row>
+    </>
+  )
+}
+
+function AdminModal(props) {
+  const keyTypes = props.children.keyTypes;
+  const setKeyTypes = props.children.setKeyTypes;
+  return (
+    <Modal
+      {...props}
+      size="lg"
+      aria-labelledby="contained-modal-title-vcenter"
+      centered
+    >
+      <Modal.Header closeButton>
+        <Modal.Title id="contained-modal-title-vcenter">
+          Admin
+        </Modal.Title>
+      </Modal.Header>
+      <Modal.Body>
+        <KeyTypeAdmin 
+          children={{
+            keyTypes: keyTypes,
+            setKeyTypes: setKeyTypes
+          }}
+        />
+      </Modal.Body>
+      <Modal.Footer>
+        <Button onClick={props.onHide}>Close</Button>
+        {/* <Button disabled={checkDisabled} onClick={submitIssue}>Add</Button> */}
       </Modal.Footer>
     </Modal>
   )
@@ -385,10 +577,51 @@ function KeyHistory(props) {
   }
   
 }
+
 function KeyModal(props) {
-  const key = props.children.key
+  const key = props.children.key;
+  const temp = {
+    _id: key._id,
+    type: key.type,
+    number: key.number,
+    owner: key.owner,
+    issueDate: key.issueDate,
+    returnDate: key.returnDate
+  }
+  const [modifyKey, setModifyKey] = useState("");
+  if (temp._id !== undefined && modifyKey === "") {
+    setModifyKey(temp)
+  } else if (modifyKey._id !== key._id ) {
+    setModifyKey(temp)
+  }
+  const updateKey = () => {
+    props.children.updateKeyList(modifyKey)
+  }
   const hrStyle = {
    "backgroundColor": "black",
+  }
+  const handleChange = e => {
+    const { target: {value, name}} = e;
+    var tempKey = temp
+    switch(name) {
+      case 'keyType': 
+        tempKey.type = value
+        setModifyKey(tempKey) 
+        break;
+      case 'keyOwner':
+        tempKey.owner = value
+        setModifyKey(tempKey)
+        break;
+      case "keyIssueDate":
+        tempKey.issueDate = value
+        setModifyKey(tempKey)
+        break;
+      case "keyNumber":
+        tempKey.number = value
+        setModifyKey(tempKey)
+      default:
+        break;
+    }
   }
   return (
     <Modal 
@@ -399,25 +632,45 @@ function KeyModal(props) {
     >
       <Modal.Header closeButton>
         <Modal.Title id="contained-modal-title-vcenter">
-          Key: {key.number}
+          Key: {modifyKey.number}
         </Modal.Title>
       </Modal.Header>
       <Modal.Body>
         <Row>
           <Col>
-            Key Type: {key.type}
+            Key Type:
+            <InputGroup>
+              <FormControl name="keyType" value={modifyKey.type} onChange={handleChange}></FormControl>
+            </InputGroup>
           </Col>
           <Col>
-            Issued To: {key.owner}
+            Issued To:
+            <InputGroup>
+              <FormControl name="keyOwner" value={modifyKey.owner} onChange={handleChange}></FormControl>
+            </InputGroup>
           </Col>
         </Row>
         <Row>
           <Col>
+            Key Number:
+            <InputGroup>
+              <FormControl name="keyNumber" value={modifyKey.number} onChange={handleChange}></FormControl>
+            </InputGroup>
           </Col>
           <Col>
-            Issue Date: {key.issueDate}
+            Issue Date:
+            <InputGroup>
+              <FormControl name="keyIssueDate" value={modifyKey.issueDate} onChange={handleChange}></FormControl>
+            </InputGroup>
           </Col>
         </Row>
+        <br />
+        <Row>
+          <Button block onClick={updateKey}>
+            Update
+          </Button>
+        </Row>
+        
         <br />
         <Row>
           <Col><h4>History</h4></Col>
@@ -436,7 +689,7 @@ function KeyModal(props) {
         <KeyHistory
           children={{
             hrStyle: hrStyle,
-            key: key
+            key: modifyKey
           }}
         />
       </Modal.Body>
@@ -459,19 +712,18 @@ function KeyFormat(key, index, functions, keyModal) {
         <Col>{key.issueDate}</Col>
         <Col>{key.returnDate}</Col>
         <Col>
-              {key.owner !== "" && key.owner !== null &&
-                <Button block variant="warning" onClick={() => functions.returnFunc(index)}>Return</Button>
-              }
-              {key.owner === "" && key.owner !== null &&
-                <Button block variant="success" onClick={onClickHandler}>Issue Key</Button>
-              }
-            
+          {key.owner !== "" && key.owner !== null &&
+            <Button block variant="warning" onClick={() => functions.returnFunc(index)}>Return</Button>
+          }
+          {key.owner === "" && key.owner !== null &&
+            <Button block variant="success" onClick={onClickHandler}>Issue Key</Button>
+          }
         </Col>
       </Row>
       <Row>
         <Col>
             {/* <Button block variant="outline-info" >details</Button> */}
-            <Button block variant="outline-info" onClick={() => keyModal(index)}>details</Button>
+            <Button block variant="info" onClick={() => keyModal(index)}>details</Button>
 
           </Col>
       </Row>
@@ -481,30 +733,47 @@ function KeyFormat(key, index, functions, keyModal) {
 
 function ListKeys(props) {
   var keyOutput;
+  const setKeyList = props.children.setKeyList
+  const keyList = props.children.keyList
+  const updateTrueKeyList = props.children.updateTrueKeyList;
   const [showKeyModal, setShowKeyModal] = useState(false);
-  const [modalKey, setModalKey]= useState({})
+  const [modalKey, setModalKey] = useState({})
+  const [keyModalIndex, setModalKeyIndex] = useState(-1)
   const functions = {
     returnFunc: props.children.returnFunc,
     issueModal: props.children.issueModal,
     keyIndex: props.children.keyIndex,
   }
   const keyModal = (index) => {
-    setModalKey(props.keyList[index])
+    setModalKey(keyList[index])
+    setModalKeyIndex(index)
     setShowKeyModal(true)
   }
-  keyOutput = props.keyList.map(((key, index) =>
+  keyOutput = keyList.map(((key, index) =>
     KeyFormat(key, index, functions, keyModal)
   ))
+  const updateKeyList = (newKey) => {
+    let tempKeyList = [...keyList];
+    const _idToUpdate = tempKeyList[keyModalIndex]._id;
+    const tempKey = tempKeyList[keyModalIndex];
+    updateTrueKeyList(_idToUpdate, "update", newKey)
+    tempKeyList[keyModalIndex] = newKey
+    updateKey(_idToUpdate, newKey)
+    setKeyList(tempKeyList)
+    setShowKeyModal(false)
+  }
   return(
     <>
-    <KeyModal
+      {keyOutput}
+
+      <KeyModal
         show={showKeyModal}
         onHide={() => setShowKeyModal(false)}
         children = {{
           key: modalKey,
+          updateKeyList: newKey => updateKeyList(newKey)
         }}
       />
-    {keyOutput}
     </>
   )
 }
@@ -721,6 +990,7 @@ function App() {
  
   const [trueKeyList, setTrueKeyList] = useState([])
   const [keyList, setKeyList] = useState([])
+  const [keyTypes, setKeyTypes] = useState([])
   const [keysLoaded, setKeysLoaded] = useState(false)
   const [keysLoading, setKeysLoading] = useState(false)
   const date = new Date().toDateString()
@@ -733,6 +1003,8 @@ function App() {
       if (!keysLoaded && !keysLoading) {
         setKeysLoading(true)
         const result = await getKeys();
+        const keyTypes = await getKeyTypes();
+        setKeyTypes(keyTypes)
         setKeyList(result)
         setTrueKeyList(result)
         setKeysLoaded(true)
@@ -741,6 +1013,7 @@ function App() {
   })
   
   const [addModalShow, setAddModalShow] = useState(false)
+  const [adminModalShow, setAdminModalShow] = useState(false)
   const [issueModalShow, setIssueModalShow] = useState(false)
   const [issueModalIndex, setIssueModalIndex] = useState(null)
   const [showFilter, setShowFilter] = useState(false)
@@ -768,7 +1041,14 @@ function App() {
               case "issue":
                 key.owner = props;
                 key.issueDate = date;
+                key.returnDate = "";
                 break;
+              case "update":
+                key.type = props.type;
+                key.owner = props.owner;
+                key.issueDate = props.issueDate;
+                key.number = props.number
+                break
             }
           }
         });
@@ -838,40 +1118,44 @@ function App() {
   } else {
     return (
       <Container fluid >
-        <Row >
-          <Col>
-            <Button size="lg" variant="success" block onClick={() => setAddModalShow(true)}>Add Key</Button>
-          </Col>
-          <Col>
-          <Button size="lg" block onClick={toggleFilter} variant="primary">Search</Button>
-          </Col>
-          <Col sm={"3"} lg="2">
-            <Button size = "lg" block variant="dark" >Admin</Button>
-          </Col>
-        </Row>
-        {showFilter && keysLoaded && <Filter
-            children={{
-              keyList: keyList,
-              trueKeyList: trueKeyList,
-              setKeyList: filteredList => setKeyList(filteredList),
-              filterVars: filterVars,
-              setFilterVars: newFilter => setFilterVars(newFilter),
-            }}
-          />}
-        <Row>
-          <Col>Key Type</Col>
-          <Col>Key #</Col>
-          <Col>Issued To</Col>
-          <Col>Issue Date</Col>
-          <Col>Return Date</Col>
-          <Col></Col>
-        </Row>
+        <div className="sticky-top" style={{"backgroundColor":"white"}}>
+          <Row >
+            <Col>
+              <Button size="lg" variant="success" block onClick={() => setAddModalShow(true)}>Add Key</Button>
+            </Col>
+            <Col>
+            <Button size="lg" block onClick={toggleFilter} variant="primary">Search</Button>
+            </Col>
+            <Col sm={"3"} lg="2">
+              <Button size = "lg" block onClick={() => setAdminModalShow(true)} variant="dark" >Admin</Button>
+            </Col>
+          </Row>
+          {showFilter && keysLoaded && <Filter
+              children={{
+                keyList: keyList,
+                trueKeyList: trueKeyList,
+                setKeyList: filteredList => setKeyList(filteredList),
+                filterVars: filterVars,
+                setFilterVars: newFilter => setFilterVars(newFilter),
+              }}
+            />}
+          <Row>
+            <Col>Key Type</Col>
+            <Col>Key #</Col>
+            <Col>Issued To</Col>
+            <Col>Issue Date</Col>
+            <Col>Return Date</Col>
+            <Col></Col>
+          </Row>
+          <br/>
+        </div>
         {keysLoaded &&
           <>
             <ListKeys
-              keyList={keyList}
-              setKeyList={setKeyList}
               children={{
+                keyList:keyList,
+                setKeyList: updatedKeyList => setKeyList(updatedKeyList),
+                updateTrueKeyList: (_idToUpdate, updateType, props) => updateTrueKeyList(_idToUpdate, updateType, props),
                 returnFunc: index => returnKey(index),
                 issueModal: () => setIssueModalShow(true),
                 keyIndex: index => setIssueModalIndex(index),
@@ -891,7 +1175,16 @@ function App() {
               onHide={() => setAddModalShow(false)}
               children={{
                   keyList: trueKeyList,
-                  newKey:newKey => addKey(newKey)
+                  newKey:newKey => addKey(newKey),
+                  keyTypes: keyTypes
+              }}
+            />
+            <AdminModal
+              show={adminModalShow}
+              onHide={() => setAdminModalShow(false)}
+              children={{
+                keyTypes: keyTypes,
+                setKeyTypes: updatedKeyTypes => setKeyTypes(updatedKeyTypes)
               }}
             />
           </>
