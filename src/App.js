@@ -4,10 +4,29 @@ import { useState, useEffect } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
 const crypto = require('crypto');
 
-const url = "http://192.168.2.5:3001/" 
+const url = "http://10.221.224.233:4001/" 
 
 
+const removeAmp = input => {
+  const type = typeof(input)
+  console.log(type)
+  let output = input;
+  if (type === "object") {
+    output = input.map(str => {
+      if (str.includes("&")){
+         str = str.replace("&", "%26")
+      }
+      return str
+    })
+  } else if (type === "string") {
+    if (input.includes("&")) {
+      output = input.replace("&", "%26")
+    }
+  }
+  console.log(output)
 
+  return output;
+}
 async function getKeys() {
   
   return fetch(url + "keys", {
@@ -87,9 +106,12 @@ async function updateKey(_idToUpdate, newKey){
 }
 
 async function  updateKeyTypes(props) {
+  const cleanProps = removeAmp(props)
+  const body = 'newKeyTypes=' + JSON.stringify(cleanProps)
+  console.log(body)
   fetch (url + "updateKeyTypes", {
     method: "POST",
-    body:"newKeyTypes=" + JSON.stringify(props),
+    body:body,
     headers: {
       "Content-type": "application/x-www-form-urlencoded"
     }
@@ -156,9 +178,10 @@ async function returnDbUpdate(props) {
 }
 
 async function keyDbUpdate(props, functions) {
+  const typeClean = removeAmp(props.type)
   const body = {
     number: props.number,
-    type: props.type,
+    type: typeClean,
     owner: props.owner,
     issueDate: props.issueDate,
     returnDate: props.returnDate,
@@ -177,6 +200,7 @@ async function keyDbUpdate(props, functions) {
     }
   }).then (response => {
     body._id = response.key_id;
+    body.type = props.type;
     const filterVars = functions.filterVars
     const trueKeyList = functions.updateTrueKeyList(null, "add", body)
     functions.setTrueKeyList(trueKeyList);
