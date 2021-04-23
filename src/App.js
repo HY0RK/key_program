@@ -4,8 +4,8 @@ import { useState, useEffect } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
 const crypto = require('crypto');
 
-const url = "http://10.221.224.233:4001/" 
-
+const url = "http://192.168.2.6:3001/" 
+// const url = "http://10.221.224.233:4001/"
 
 const removeAmp = input => {
   const type = typeof(input)
@@ -86,9 +86,13 @@ async function getKeyTypes(){
 }
 
 async function updateKey(_idToUpdate, newKey){
+  let tempKey = {...newKey}
+  let type = newKey.type;
+  type = removeAmp(type)
+  tempKey.type = type;
   const toUpdate = {
     _idToUpdate: _idToUpdate,
-    updatedKey: newKey
+    updatedKey: tempKey
   };
   return fetch(url + "updateKey", {
     method: "POST",
