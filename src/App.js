@@ -4,8 +4,8 @@ import { useState, useEffect } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
 const crypto = require('crypto');
 
-const url = "http://192.168.2.6:3001/" 
-// const url = "http://10.221.224.233:4001/"
+// const url = "http://192.168.2.6:3001/" 
+const url = "http://10.221.224.233:4001/"
 
 const removeAmp = input => {
   const type = typeof(input)
